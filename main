@@ -1,0 +1,163 @@
+#include <TM1638.h>
+ 
+ 
+#define trigPin 12
+#define echoPin 11
+ 
+byte buttons;
+ 
+float pomiary[50];
+int licznik=0;
+int suma=0;
+String s;
+int mode=0;
+float wynik;
+ 
+bool wykonano=false;
+bool zresetowano=false;
+ 
+TM1638 module(8, 9, 7);
+ 
+float calculatedSD(float data[])
+{
+    float sum = 0.0, mean, standardDeviation = 0.0,sd;
+ 
+    int i,k=0;
+    float * nowa = new float[k];    
+    for(i = 0; i < 50; ++i)
+    {
+        sum += data[i];
+    }
+ 
+    mean = sum/50;
+ 
+    for(i = 0; i < 50; ++i)
+        standardDeviation += pow(data[i] - mean, 2);
+ 
+    sd = sqrt(standardDeviation / 50);
+    for(i = 0; i < 50; ++i)
+    {
+     if(data[i]<mean+2*sd && data[i]>mean-2*sd)
+        {
+            nowa[k]=data[i];
+            k+=1;
+        }
+    }
+    sum =0.0;
+    for(i = 0; i < k; ++i)
+    {
+        sum += nowa[i];
+    }
+    return sum/k;
+}
+ 
+ 
+void setup() {
+  Serial.begin (9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  module.setDisplayToString("----",0,4);
+}
+ 
+void loop() {  
+ 
+   buttons = module.getButtons();
+ 
+   if(isButtonBeingPressed(1) && mode==0){
+ 
+     mode=1;
+   }
+   
+   if(isButtonBeingPressed(2) && mode==1){
+ 
+    mode=0;
+   }
+   
+   if(mode==1){
+    if(wykonano==false){
+      module.setDisplayToString("     ",0,4);
+      wynik=pomiar();
+      s = String(wynik);
+      if(wynik<100)module.setDisplayToString(s,0,4);
+      else{
+        module.setDisplayToString(s,0,3);
+      }
+     
+      Serial.println(s);
+      wykonano=true;
+      zresetowano=false;
+    }
+   
+   }
+   if(mode==0){
+    if(zresetowano==false){
+     module.setDisplayToString(" ----",0,3);
+     float pomiary[50];
+     float wynik;
+     int licznik=0;
+     int suma=0;
+     s="    ";
+     wykonano=false;
+     zresetowano=true;
+    }
+     
+     
+   }
+ 
+}
+ 
+int zmierzOdleglosc() {
+  long czas, dystans;
+ 
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+ 
+  czas = pulseIn(echoPin, HIGH);
+  dystans = czas / 0.58;
+ 
+  return dystans;
+}
+ 
+float pomiar(){
+ 
+  while(licznik<50){
+     
+     pomiary[licznik]=(float)zmierzOdleglosc();
+     licznik++;
+ 
+ 
+     delay(100);
+     
+  }
+ 
+   float wynik= calculatedSD(pomiary)/100;
+   licznik=0;
+   float wynikr = round(wynik * 10.0) / 10.0;
+   return wynikr;
+   
+     
+   
+ 
+}
+ 
+ 
+boolean isButtonBeingPressed(int n){
+ 
+ 
+ if(n < 1 or n > 8) return false;
+ 
+ 
+ buttons = module.getButtons();
+ 
+ int bitToLookAt = n - 1;
+ 
+ byte theValueOfTheBit = bitRead(buttons, bitToLookAt);
+ 
+ if(theValueOfTheBit == 1)
+   return true;
+ else
+   return false;
+}
